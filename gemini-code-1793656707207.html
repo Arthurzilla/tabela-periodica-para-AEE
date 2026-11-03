@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabela Periódica - Elementos no Nosso Cotidiano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col justify-between overflow-hidden select-none">
+
+    <!-- CABEÇALHO -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-sm">
+        <div class="flex items-center space-x-3">
+            
+            <h1 class="text-lg font-semibold tracking-wide text-slate-800">Tabela Periódica: Elementos no Nosso Cotidiano</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="slide-counter" class="text-sm font-medium text-slate-500">Slide 1 de 126</span>
+            <button onclick="toggleFullscreen()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-2 border border-slate-200">
+                <i class="fa-solid fa-expand"></i> Ecrã Inteiro (<kbd class="bg-white px-1.5 py-0.5 rounded text-xs border border-slate-200">F</kbd>)
+            </button>
+        </div>
+    </header>
+
+    <!-- ÁREA PRINCIPAL DO SLIDE -->
+    <main class="flex-1 relative flex items-center justify-center p-4 bg-slate-50 overflow-hidden">
+        <div id="slides-container" class="w-full h-full max-w-6xl max-h-[80vh] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center relative">
+            <!-- Conteúdo carregado via JS -->
+        </div>
+
+        <!-- SETAS DE NAVEGAÇÃO -->
+        <button onclick="prevSlide()" class="absolute left-6 bg-white/90 hover:bg-white text-slate-700 p-4 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110">
+            <i class="fa-solid fa-chevron-left text-xl"></i>
+        </button>
+        <button onclick="nextSlide()" class="absolute right-6 bg-white/90 hover:bg-white text-slate-700 p-4 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110">
+            <i class="fa-solid fa-chevron-right text-xl"></i>
+        </button>
+    </main>
+
+    <!-- RODAPÉ E CONTROLES -->
+    <footer class="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
+        <!-- CANTO INFERIOR ESQUERDO: BOTÃO DE DOWNLOAD DO ARQUIVO -->
+        <div>
+            <a href="Tabela_Periodica_Categorias_Margens_Marista (1).pdf" download class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow transition flex items-center gap-2">
+                <i class="fa-solid fa-file-arrow-down text-lg"></i> Baixar Arquivo PDF
+            </a>
+        </div>
+
+        <!-- CONTROLES CENTRAIS DE NAVEGAÇÃO -->
+        <div class="flex items-center space-x-4">
+            <button onclick="firstSlide()" class="text-slate-500 hover:text-slate-800 transition px-2 py-1"><i class="fa-solid fa-backward-step"></i> Início</button>
+            <button onclick="prevSlide()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition border border-slate-200">Anterior</button>
+            <span id="progress-text" class="text-sm font-semibold text-slate-700">1 / 126</span>
+            <button onclick="nextSlide()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">Próximo</button>
+            <button onclick="lastSlide()" class="text-slate-500 hover:text-slate-800 transition px-2 py-1">Fim <i class="fa-solid fa-forward-step"></i></button>
+        </div>
+
+        <div class="w-48 text-right text-xs text-slate-500">
+            Marista Criciúma - SC
+        </div>
+    </footer>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 117;
+
+        function updateSlide() {
+            const container = document.getElementById('slides-container');
+            document.getElementById('slide-counter').innerText = `Slide ${currentSlide} de ${totalSlides}`;
+            document.getElementById('progress-text').innerText = `${currentSlide} / ${totalSlides}`;
+
+            // Carrega a imagem mantendo o padrão nomeado como slides (X).jpg dentro da pasta slides/
+            container.innerHTML = `
+                <div class="w-full h-full flex items-center justify-center bg-white relative">
+                    <img src="slides/slides (${currentSlide}).jpg" 
+                         alt="Slide ${currentSlide}" 
+                         class="max-w-full max-h-full object-contain select-none"
+                         onerror="this.onerror=null; this.src='https://via.placeholder.com/1280x720?text=Imagem+nao+encontrada:+slides+(${currentSlide}).jpg';">
+                </div>
+            `;
+        }
+
+        function nextSlide() { if (currentSlide < totalSlides) { currentSlide++; updateSlide(); } }
+        function prevSlide() { if (currentSlide > 1) { currentSlide--; updateSlide(); } }
+        function firstSlide() { currentSlide = 1; updateSlide(); }
+        function lastSlide() { currentSlide = totalSlides; updateSlide(); }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { nextSlide(); }
+            if (e.key === 'ArrowLeft') { prevSlide(); }
+            if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
+        });
+
+        // Inicializa o primeiro slide
+        updateSlide();
+    </script>
+</body>
+</html>
