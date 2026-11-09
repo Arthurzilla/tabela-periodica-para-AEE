@@ -6,17 +6,18 @@
     <title>Tabela Periódica - Elementos no Nosso Cotidiano</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 h-screen flex flex-col justify-between overflow-hidden select-none">
-    <!-- teste123 -->
+
     <!-- CABEÇALHO -->
     <header class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center shadow-sm">
         <div class="flex items-center space-x-3">
-            
             <h1 class="text-lg font-semibold tracking-wide text-slate-800">Tabela Periódica: Elementos no Nosso Cotidiano</h1>
         </div>
         <div class="flex items-center space-x-4">
-            <span id="slide-counter" class="text-sm font-medium text-slate-500">Slide 1 de 126</span>
+            <span id="slide-counter" class="text-sm font-medium text-slate-500">Carregando PDF...</span>
             <button onclick="toggleFullscreen()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-2 border border-slate-200">
                 <i class="fa-solid fa-expand"></i> Ecrã Inteiro (<kbd class="bg-white px-1.5 py-0.5 rounded text-xs border border-slate-200">F</kbd>)
             </button>
@@ -26,7 +27,7 @@
     <!-- ÁREA PRINCIPAL DO SLIDE -->
     <main class="flex-1 relative flex items-center justify-center p-4 bg-slate-50 overflow-hidden">
         <div id="slides-container" class="w-full h-full max-w-6xl max-h-[80vh] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center relative">
-            <!-- Conteúdo carregado via JS -->
+            <canvas id="pdf-canvas" class="max-w-full max-h-full object-contain"></canvas>
         </div>
 
         <!-- SETAS DE NAVEGAÇÃO -->
@@ -40,7 +41,7 @@
 
     <!-- RODAPÉ E CONTROLES -->
     <footer class="bg-white border-t border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <!-- CANTO INFERIOR ESQUERDO: BOTÃO DE DOWNLOAD DO ARQUIVO -->
+        <!-- CANTO INFERIOR ESQUERDO: BOTÃO DE DOWNLOAD -->
         <div>
             <a href="Tabela_Periodica_Categorias_Margens_Marista (1).pdf" download class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow transition flex items-center gap-2">
                 <i class="fa-solid fa-file-arrow-down text-lg"></i> Baixar Arquivo PDF
@@ -51,7 +52,7 @@
         <div class="flex items-center space-x-4">
             <button onclick="firstSlide()" class="text-slate-500 hover:text-slate-800 transition px-2 py-1"><i class="fa-solid fa-backward-step"></i> Início</button>
             <button onclick="prevSlide()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition border border-slate-200">Anterior</button>
-            <span id="progress-text" class="text-sm font-semibold text-slate-700">1 / 126</span>
+            <span id="progress-text" class="text-sm font-semibold text-slate-700">- / -</span>
             <button onclick="nextSlide()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">Próximo</button>
             <button onclick="lastSlide()" class="text-slate-500 hover:text-slate-800 transition px-2 py-1">Fim <i class="fa-solid fa-forward-step"></i></button>
         </div>
@@ -62,29 +63,76 @@
     </footer>
 
     <script>
+        // Configura o caminho do worker do PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdfUrl = 'Tabela_Periodica_Categorias_Margens_Marista (1).pdf';
+        let pdfDoc = null;
         let currentSlide = 1;
-        const totalSlides = 117;
+        let totalSlides = 0;
+        let pageRendering = false;
+        let pageNumPending = null;
 
-        function updateSlide() {
-            const container = document.getElementById('slides-container');
-            document.getElementById('slide-counter').innerText = `Slide ${currentSlide} de ${totalSlides}`;
-            document.getElementById('progress-text').innerText = `${currentSlide} / ${totalSlides}`;
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
 
-            // Carrega a imagem mantendo o padrão nomeado como slides (X).jpg dentro da pasta slides/
-            container.innerHTML = `
-                <div class="w-full h-full flex items-center justify-center bg-white relative">
-                    <img src="slides/slides (${currentSlide}).jpg" 
-                         alt="Slide ${currentSlide}" 
-                         class="max-w-full max-h-full object-contain select-none"
-                         onerror="this.onerror=null; this.src='https://via.placeholder.com/1280x720?text=Imagem+nao+encontrada:+slides+(${currentSlide}).jpg';">
-                </div>
-            `;
+        // Carrega o documento PDF
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+            pdfDoc = pdf;
+            totalSlides = pdf.numPages;
+            renderPage(currentSlide);
+        }).catch(err => {
+            console.error('Erro ao carregar o PDF:', err);
+            document.getElementById('slide-counter').innerText = 'Erro ao carregar o PDF';
+        });
+
+        // Função para renderizar uma página específica do PDF no Canvas
+        function renderPage(num) {
+            pageRendering = true;
+            document.getElementById('slide-counter').innerText = `Slide ${num} de ${totalSlides}`;
+            document.getElementById('progress-text').innerText = `${num} / ${totalSlides}`;
+
+            pdfDoc.getPage(num).then(page => {
+                // Define a escala com base nas dimensões do contêiner
+                const container = document.getElementById('slides-container');
+                const viewportRaw = page.getViewport({ scale: 1 });
+                
+                const scaleX = container.clientWidth / viewportRaw.width;
+                const scaleY = container.clientHeight / viewportRaw.height;
+                const scale = Math.min(scaleX, scaleY) * 2; // Multiplicado por 2 para maior nitidez (Retina/HD)
+
+                const viewport = page.getViewport({ scale: scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(() => {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
         }
 
-        function nextSlide() { if (currentSlide < totalSlides) { currentSlide++; updateSlide(); } }
-        function prevSlide() { if (currentSlide > 1) { currentSlide--; updateSlide(); } }
-        function firstSlide() { currentSlide = 1; updateSlide(); }
-        function lastSlide() { currentSlide = totalSlides; updateSlide(); }
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function nextSlide() { if (pdfDoc && currentSlide < totalSlides) { currentSlide++; queueRenderPage(currentSlide); } }
+        function prevSlide() { if (pdfDoc && currentSlide > 1) { currentSlide--; queueRenderPage(currentSlide); } }
+        function firstSlide() { if (pdfDoc) { currentSlide = 1; queueRenderPage(currentSlide); } }
+        function lastSlide() { if (pdfDoc) { currentSlide = totalSlides; queueRenderPage(currentSlide); } }
 
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
@@ -100,8 +148,10 @@
             if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
         });
 
-        // Inicializa o primeiro slide
-        updateSlide();
+        // Re-renderiza o slide ao redimensionar a janela para manter a proporção correta
+        window.addEventListener('resize', () => {
+            if (pdfDoc) queueRenderPage(currentSlide);
+        });
     </script>
 </body>
 </html>
