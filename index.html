@@ -148,6 +148,37 @@
             if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
         });
 
+        const slideArea = document.querySelector('main');
+        let touchStart = null;
+
+        slideArea.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1 || e.target.closest('button, a')) {
+                touchStart = null;
+                return;
+            }
+
+            touchStart = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY
+            };
+        }, { passive: true });
+
+        slideArea.addEventListener('touchend', (e) => {
+            if (!touchStart || e.changedTouches.length !== 1) return;
+
+            const deltaX = e.changedTouches[0].clientX - touchStart.x;
+            const deltaY = e.changedTouches[0].clientY - touchStart.y;
+            touchStart = null;
+
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                deltaX < 0 ? nextSlide() : prevSlide();
+            }
+        }, { passive: true });
+
+        slideArea.addEventListener('touchcancel', () => {
+            touchStart = null;
+        }, { passive: true });
+
         // Re-renderiza o slide ao redimensionar a janela para manter a proporção correta
         window.addEventListener('resize', () => {
             if (pdfDoc) queueRenderPage(currentSlide);
