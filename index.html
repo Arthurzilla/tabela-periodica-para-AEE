@@ -31,10 +31,10 @@
         </div>
 
         <!-- SETAS DE NAVEGAÇÃO -->
-        <button onclick="prevSlide()" aria-label="Slide anterior" class="absolute left-2 bg-white/90 hover:bg-white text-slate-700 p-3 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110 sm:left-4 md:left-6 md:p-4">
+        <button onclick="prevSlide()" aria-label="Slide anterior" class="hidden md:flex absolute left-2 bg-white/90 hover:bg-white text-slate-700 p-3 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110 sm:left-4 md:left-6 md:p-4">
             <i class="fa-solid fa-chevron-left text-lg md:text-xl"></i>
         </button>
-        <button onclick="nextSlide()" aria-label="Próximo slide" class="absolute right-2 bg-white/90 hover:bg-white text-slate-700 p-3 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110 sm:right-4 md:right-6 md:p-4">
+        <button onclick="nextSlide()" aria-label="Próximo slide" class="hidden md:flex absolute right-2 bg-white/90 hover:bg-white text-slate-700 p-3 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110 sm:right-4 md:right-6 md:p-4">
             <i class="fa-solid fa-chevron-right text-lg md:text-xl"></i>
         </button>
     </main>
@@ -72,6 +72,7 @@
         let totalSlides = 0;
         let pageRendering = false;
         let pageNumPending = null;
+        let renderedSlide = 0;
 
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
@@ -113,6 +114,17 @@
                 const renderTask = page.render(renderContext);
                 renderTask.promise.then(() => {
                     pageRendering = false;
+                    if (renderedSlide && num !== renderedSlide && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        const direction = num > renderedSlide ? 1 : -1;
+                        canvas.animate([
+                            { opacity: 0, transform: `translateX(${direction * 36}px) scale(0.985)` },
+                            { opacity: 1, transform: 'translateX(0) scale(1)' }
+                        ], {
+                            duration: 420,
+                            easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+                        });
+                    }
+                    renderedSlide = num;
                     if (pageNumPending !== null) {
                         renderPage(pageNumPending);
                         pageNumPending = null;
