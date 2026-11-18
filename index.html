@@ -8,70 +8,102 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- PDF.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+        .animate-float:hover {
+            animation-play-state: paused;
+            transform: scale(1.02) translateY(-4px);
+        }
+        .periodic-grid {
+            display: grid;
+            grid-template-columns: repeat(18, minmax(0, 1fr));
+            gap: 4px;
+        }
+    </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-[100dvh] h-[100dvh] flex flex-col justify-between overflow-hidden select-none md:min-h-screen md:h-screen">
 
-    <!-- CABEÇALHO -->
-    <header class="hidden bg-white border-b border-slate-200 px-3 py-3 flex-col gap-2 items-center shadow-sm sm:px-6 md:flex md:flex-row md:justify-between md:py-3">
-        <div class="flex items-center space-x-3">
-            <h1 class="text-center text-base font-semibold tracking-wide text-slate-800 sm:text-lg md:text-left">Tabela Periódica: Elementos no Nosso Cotidiano</h1>
+    <!-- TELA FLUTUANTE (SLIDE 1) -->
+    <div id="cover-screen" onclick="enterSite()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm cursor-pointer transition-opacity duration-500 p-4">
+        <div class="animate-float bg-white p-2 rounded-2xl shadow-2xl border border-slate-200">
+            <canvas id="cover-canvas" class="max-w-[90vw] max-h-[80vh] rounded-xl object-contain block"></canvas>
         </div>
-        <div class="flex items-center justify-center gap-3 sm:space-x-4">
-            <span id="slide-counter" class="text-sm font-medium text-slate-500">Carregando PDF...</span>
+    </div>
+
+    <!-- CABEÇALHO -->
+    <header class="bg-white border-b border-slate-200 px-3 py-3 flex justify-between items-center shadow-sm sm:px-6">
+        <div class="flex items-center space-x-3">
+            <h1 class="text-base font-semibold tracking-wide text-slate-800 sm:text-lg">Tabela Periódica: Elementos no Nosso Cotidiano</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="slide-counter" class="text-sm font-medium text-slate-500">Menu Principal</span>
             <button onclick="toggleFullscreen()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-2 border border-slate-200">
-                <i class="fa-solid fa-expand"></i> Ecrã Inteiro <span class="hidden sm:inline">(<kbd class="bg-white px-1.5 py-0.5 rounded text-xs border border-slate-200">F</kbd>)</span>
+                <i class="fa-solid fa-expand"></i> Ecrã Inteiro
             </button>
         </div>
     </header>
 
-    <!-- ÁREA PRINCIPAL DO SLIDE -->
-    <main class="flex-1 relative flex min-h-0 items-center justify-center p-0 bg-slate-50 overflow-hidden md:p-4">
-        <div id="slides-container" class="w-full h-full max-w-none max-h-none bg-white rounded-none shadow-none border-0 overflow-hidden flex items-center justify-center relative md:max-w-6xl md:max-h-[80vh] md:rounded-xl md:shadow-lg md:border md:border-slate-200">
+    <!-- ÁREA PRINCIPAL -->
+    <main class="flex-1 relative flex min-h-0 items-center justify-center p-2 bg-slate-50 overflow-hidden md:p-4">
+        
+        <!-- VISÃO 1: TABELA PERIÓDICA INTERATIVA -->
+        <div id="periodic-table-view" class="w-full h-full max-w-7xl bg-white rounded-xl shadow-lg border border-slate-200 p-4 flex flex-col items-center justify-start overflow-auto">
+            <h2 class="text-xl font-bold text-slate-700 mb-1">Tabela Periódica</h2>
+            <p class="text-xs text-slate-500 mb-3">Clique em um elemento em destaque para abrir o slide correspondente.</p>
+            
+            <div id="elements-grid" class="periodic-grid w-full text-[10px] sm:text-xs"></div>
+            
+            <button onclick="goToSlide(2)" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl font-semibold shadow transition text-sm">
+                Ver Apresentação Completa em Slides
+            </button>
+        </div>
+
+        <!-- VISÃO 2: VISUALIZADOR DE SLIDES DO PDF -->
+        <div id="slides-container" class="hidden w-full h-full max-w-6xl max-h-[80vh] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden flex items-center justify-center relative">
             <canvas id="pdf-canvas" class="max-w-full max-h-full object-contain"></canvas>
         </div>
 
-        <!-- SETAS DE NAVEGAÇÃO -->
-        <button onclick="prevSlide()" aria-label="Slide anterior" class="hidden md:flex absolute left-2 bg-white/90 hover:bg-white text-slate-700 p-3 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110 sm:left-4 md:left-6 md:p-4">
-            <i class="fa-solid fa-chevron-left text-lg md:text-xl"></i>
+        <!-- SETAS DE NAVEGAÇÃO LATERAL DOS SLIDES -->
+        <button id="btn-prev-side" onclick="prevSlide()" class="hidden absolute left-6 bg-white/90 hover:bg-white text-slate-700 p-4 rounded-full shadow-md border border-slate-200 transition hover:scale-110 z-10">
+            <i class="fa-solid fa-chevron-left text-xl"></i>
         </button>
-        <button onclick="nextSlide()" aria-label="Próximo slide" class="hidden md:flex absolute right-2 bg-white/90 hover:bg-white text-slate-700 p-3 rounded-full shadow-md border border-slate-200 backdrop-blur transition hover:scale-110 sm:right-4 md:right-6 md:p-4">
-            <i class="fa-solid fa-chevron-right text-lg md:text-xl"></i>
+        <button id="btn-next-side" onclick="nextSlide()" class="hidden absolute right-6 bg-white/90 hover:bg-white text-slate-700 p-4 rounded-full shadow-md border border-slate-200 transition hover:scale-110 z-10">
+            <i class="fa-solid fa-chevron-right text-xl"></i>
         </button>
     </main>
 
     <!-- RODAPÉ E CONTROLES -->
-    <footer class="hidden bg-white border-t border-slate-200 px-3 py-3 flex-col gap-3 items-center shadow-sm sm:px-6 sm:py-4 md:flex md:flex-row md:justify-between">
-        <!-- CANTO INFERIOR ESQUERDO: BOTÃO DE DOWNLOAD -->
-        <div class="w-full md:w-auto">
+    <footer class="bg-white border-t border-slate-200 px-3 py-3 flex flex-col sm:flex-row justify-between items-center shadow-sm sm:px-6">
+        <div>
             <a href="Tabela_Periodica_Categorias_Margens_Marista (1).pdf" download class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-file-arrow-down text-lg"></i> Baixar Arquivo PDF
+                <i class="fa-solid fa-file-arrow-down text-lg"></i> Baixar PDF
             </a>
         </div>
 
-        <!-- CONTROLES CENTRAIS DE NAVEGAÇÃO -->
-        <div class="flex flex-wrap items-center justify-center gap-2 md:space-x-4 md:gap-0">
-            <button onclick="firstSlide()" class="text-slate-500 hover:text-slate-800 transition px-2 py-1"><i class="fa-solid fa-backward-step"></i> Início</button>
-            <button onclick="prevSlide()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition border border-slate-200 sm:px-4">Anterior</button>
-            <span id="progress-text" class="text-sm font-semibold text-slate-700">- / -</span>
-            <button onclick="nextSlide()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm sm:px-4">Próximo</button>
-            <button onclick="lastSlide()" class="text-slate-500 hover:text-slate-800 transition px-2 py-1">Fim <i class="fa-solid fa-forward-step"></i></button>
+        <div class="flex items-center gap-4 my-2 sm:my-0">
+            <button onclick="showPeriodicTable()" class="text-slate-500 hover:text-blue-600 transition font-medium"><i class="fa-solid fa-table-cells"></i> Menu Tabela</button>
+            <button onclick="showCover()" class="text-slate-500 hover:text-blue-600 transition font-medium"><i class="fa-solid fa-house"></i> Capa</button>
+            
+            <!-- CONTROLES QUE SÓ APARECEM NOS SLIDES -->
+            <div id="slide-controls" class="hidden items-center gap-4">
+                <button onclick="prevSlide()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition border border-slate-200">Anterior</button>
+                <span id="progress-text" class="text-sm font-semibold text-slate-700">- / -</span>
+                <button onclick="nextSlide()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">Próximo</button>
+            </div>
         </div>
 
-        <div class="w-auto text-center text-xs text-slate-500 md:w-48 md:text-right">
+        <div class="text-xs text-slate-500 text-right">
             Marista Criciúma - SC
         </div>
     </footer>
 
-    <a href="Tabela_Periodica_Categorias_Margens_Marista (1).pdf" download class="fixed bottom-4 left-4 z-20 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white shadow-lg md:hidden">
-        <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i>
-        Baixar PDF
-    </a>
-    <div class="fixed right-4 top-4 z-20 w-24 rounded-lg bg-white/90 p-1 shadow-md md:hidden">
-        <img src="LOGO-MARISTA-1024x576-1.jpg" alt="Marista" class="block h-auto w-full">
-    </div>
-
     <script>
-        // Configura o caminho do worker do PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const pdfUrl = 'Tabela_Periodica_Categorias_Margens_Marista (1).pdf';
@@ -80,59 +112,173 @@
         let totalSlides = 0;
         let pageRendering = false;
         let pageNumPending = null;
-        let renderedSlide = 0;
 
         const canvas = document.getElementById('pdf-canvas');
         const ctx = canvas.getContext('2d');
+        const coverCanvas = document.getElementById('cover-canvas');
+        const coverCtx = coverCanvas.getContext('2d');
+        const coverScreen = document.getElementById('cover-screen');
+        
+        const tableView = document.getElementById('periodic-table-view');
+        const slidesContainer = document.getElementById('slides-container');
+        const btnPrevSide = document.getElementById('btn-prev-side');
+        const btnNextSide = document.getElementById('btn-next-side');
+        const slideControls = document.getElementById('slide-controls');
 
-        // Carrega o documento PDF
+        // =========================================================================
+        // MAPA DE REDIRECIONAMENTO EXATO: "Símbolo": Número_da_Página_no_PDF
+        // Ajuste aqui o número do slide correspondente a cada elemento do seu PDF!
+        // =========================================================================
+        const slideMap = {
+            "H": 2,
+            "He": 3,
+            "Li": 4,
+            "Be": 5,
+            "B": 6,
+            "C": 7,
+            "N": 8,
+            "O": 9,
+            "F": 10,
+            "Ne": 11,
+            "Na": 12,
+            "Mg": 13,
+            "Al": 14,
+            "Si": 15,
+            "P": 16,
+            "S": 17,
+            "Cl": 18,
+            "Ar": 19,
+            "K": 20,
+            "Ca": 21,
+            "Fe": 22,
+            "Cu": 23,
+            "Zn": 24,
+            "Ag": 25,
+            "Au": 26,
+            "Hg": 27,
+            "Pb": 28
+            // Adicione ou edite os símbolos e páginas exatas do seu PDF acima!
+        };
+
+        const elementsData = [
+            {n: 1, s: "H"}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 2, s: "He"},
+            {n: 3, s: "Li"}, {n: 4, s: "Be"}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 5, s: "B"}, {n: 6, s: "C"}, {n: 7, s: "N"}, {n: 8, s: "O"}, {n: 9, s: "F"}, {n: 10, s: "Ne"},
+            {n: 11, s: "Na"}, {n: 12, s: "Mg"}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 0, s: ""}, {n: 13, s: "Al"}, {n: 14, s: "Si"}, {n: 15, s: "P"}, {n: 16, s: "S"}, {n: 17, s: "Cl"}, {n: 18, s: "Ar"},
+            {n: 19, s: "K"}, {n: 20, s: "Ca"}, {n: 21, s: "Sc"}, {n: 22, s: "Ti"}, {n: 23, s: "V"}, {n: 24, s: "Cr"}, {n: 25, s: "Mn"}, {n: 26, s: "Fe"}, {n: 27, s: "Co"}, {n: 28, s: "Ni"}, {n: 29, s: "Cu"}, {n: 30, s: "Zn"}, {n: 31, s: "Ga"}, {n: 32, s: "Ge"}, {n: 33, s: "As"}, {n: 34, s: "Se"}, {n: 35, s: "Br"}, {n: 36, s: "Kr"},
+            {n: 37, s: "Rb"}, {n: 38, s: "Sr"}, {n: 39, s: "Y"}, {n: 40, s: "Zr"}, {n: 41, s: "Nb"}, {n: 42, s: "Mo"}, {n: 43, s: "Tc"}, {n: 44, s: "Ru"}, {n: 45, s: "Rh"}, {n: 46, s: "Pd"}, {n: 47, s: "Ag"}, {n: 48, s: "Cd"}, {n: 49, s: "In"}, {n: 50, s: "Sn"}, {n: 51, s: "Sb"}, {n: 52, s: "Te"}, {n: 53, s: "I"}, {n: 54, s: "Xe"},
+            {n: 55, s: "Cs"}, {n: 56, s: "Ba"}, {n: 0, s: "La*"}, {n: 72, s: "Hf"}, {n: 73, s: "Ta"}, {n: 74, s: "W"}, {n: 75, s: "Re"}, {n: 76, s: "Os"}, {n: 77, s: "Ir"}, {n: 78, s: "Pt"}, {n: 79, s: "Au"}, {n: 80, s: "Hg"}, {n: 81, s: "Tl"}, {n: 82, s: "Pb"}, {n: 83, s: "Bi"}, {n: 84, s: "Po"}, {n: 85, s: "At"}, {n: 86, s: "Rn"},
+            {n: 87, s: "Fr"}, {n: 88, s: "Ra"}, {n: 0, s: "Ac**"}, {n: 104, s: "Rf"}, {n: 105, s: "Db"}, {n: 106, s: "Sg"}, {n: 107, s: "Bh"}, {n: 108, s: "Hs"}, {n: 109, s: "Mt"}, {n: 110, s: "Ds"}, {n: 111, s: "Rg"}, {n: 112, s: "Cn"}, {n: 113, s: "Nh"}, {n: 114, s: "Fl"}, {n: 115, s: "Mc"}, {n: 116, s: "Lv"}, {n: 117, s: "Ts"}, {n: 118, s: "Og"}
+        ];
+
+        function getElementStyle(n) {
+            if (n === 1) return "bg-orange-100 hover:bg-orange-200 border-orange-300 text-orange-900";
+            if ([3, 11, 19, 37, 55, 87].includes(n)) return "bg-red-100 hover:bg-red-200 border-red-300 text-red-900";
+            if ([4, 12, 20, 38, 56, 88].includes(n)) return "bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-900";
+            if ((n >= 21 && n <= 30) || (n >= 39 && n <= 48) || (n >= 72 && n <= 80) || (n >= 104 && n <= 112)) 
+                return "bg-yellow-100 hover:bg-yellow-200 border-yellow-300 text-yellow-900";
+            if ([5, 14, 32, 33, 51, 52, 84].includes(n)) return "bg-teal-100 hover:bg-teal-200 border-teal-300 text-teal-900";
+            if ([13, 31, 49, 50, 81, 82, 83, 113, 114, 115, 116].includes(n)) return "bg-slate-200 hover:bg-slate-300 border-slate-300 text-slate-800";
+            if ([6, 7, 8, 15, 16, 34].includes(n)) return "bg-emerald-100 hover:bg-emerald-200 border-emerald-300 text-emerald-900";
+            if ([9, 17, 35, 53, 85, 117].includes(n)) return "bg-cyan-100 hover:bg-cyan-200 border-cyan-300 text-cyan-900";
+            if ([2, 10, 18, 36, 54, 86, 118].includes(n)) return "bg-purple-100 hover:bg-purple-200 border-purple-300 text-purple-900";
+            return "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700";
+        }
+
+        function buildPeriodicTable() {
+            const grid = document.getElementById('elements-grid');
+            grid.innerHTML = '';
+            elementsData.forEach(el => {
+                const cell = document.createElement('div');
+                if (el.n > 0) {
+                    const targetSlide = slideMap[el.s];
+                    const colorClass = getElementStyle(el.n);
+
+                    if (targetSlide && targetSlide <= totalSlides) {
+                        // Elemento presente nos slides (clicável e com destaque)
+                        cell.className = `${colorClass} border rounded p-1 text-center cursor-pointer transition transform hover:scale-110 hover:z-10 flex flex-col items-center justify-center aspect-square shadow-sm ring-1 ring-black/5`;
+                        cell.title = `Ir para o slide ${targetSlide} (${el.s})`;
+                        cell.onclick = () => goToSlide(targetSlide);
+                    } else {
+                        // Elemento sem slide mapeado (fica mais discreto)
+                        cell.className = `${colorClass} opacity-40 border rounded p-1 text-center cursor-not-allowed flex flex-col items-center justify-center aspect-square`;
+                        cell.title = `${el.s} (Sem slide específico)`;
+                    }
+
+                    cell.innerHTML = `<span class="text-[7px] opacity-70">${el.n}</span><strong class="text-xs font-bold">${el.s}</strong>`;
+                } else {
+                    cell.className = "invisible aspect-square";
+                }
+                grid.appendChild(cell);
+            });
+        }
+
         pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
             pdfDoc = pdf;
             totalSlides = pdf.numPages;
-            renderPage(currentSlide);
-        }).catch(err => {
-            console.error('Erro ao carregar o PDF:', err);
-            document.getElementById('slide-counter').innerText = 'Erro ao carregar o PDF';
+            renderCover();
+            buildPeriodicTable();
         });
 
-        // Função para renderizar uma página específica do PDF no Canvas
+        function renderCover() {
+            pdfDoc.getPage(1).then(page => {
+                const vp = page.getViewport({ scale: 1 });
+                const scale = Math.min((window.innerWidth * 0.8) / vp.width, (window.innerHeight * 0.75) / vp.height) * 2;
+                const viewport = page.getViewport({ scale });
+                coverCanvas.height = viewport.height;
+                coverCanvas.width = viewport.width;
+                page.render({ canvasContext: coverCtx, viewport });
+            });
+        }
+
+        function enterSite() {
+            coverScreen.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => coverScreen.style.display = 'none', 500);
+        }
+
+        function showCover() {
+            coverScreen.style.display = 'flex';
+            setTimeout(() => coverScreen.classList.remove('opacity-0', 'pointer-events-none'), 10);
+            showPeriodicTable();
+        }
+
+        function showPeriodicTable() {
+            tableView.classList.remove('hidden');
+            slidesContainer.classList.add('hidden');
+            btnPrevSide.classList.add('hidden');
+            btnNextSide.classList.add('hidden');
+            slideControls.classList.add('hidden');
+            slideControls.classList.remove('flex');
+            document.getElementById('slide-counter').innerText = 'Menu Principal';
+        }
+
+        function goToSlide(num) {
+            if (!pdfDoc || num < 1 || num > totalSlides) return;
+            tableView.classList.add('hidden');
+            slidesContainer.classList.remove('hidden');
+            btnPrevSide.classList.remove('hidden');
+            btnNextSide.classList.remove('hidden');
+            slideControls.classList.remove('hidden');
+            slideControls.classList.add('flex');
+            currentSlide = num;
+            renderPage(currentSlide);
+        }
+
         function renderPage(num) {
             pageRendering = true;
             document.getElementById('slide-counter').innerText = `Slide ${num} de ${totalSlides}`;
             document.getElementById('progress-text').innerText = `${num} / ${totalSlides}`;
 
             pdfDoc.getPage(num).then(page => {
-                // Define a escala com base nas dimensões do contêiner
-                const container = document.getElementById('slides-container');
-                const viewportRaw = page.getViewport({ scale: 1 });
+                const container = slidesContainer;
+                const vp = page.getViewport({ scale: 1 });
+                const scale = Math.min(container.clientWidth / vp.width, container.clientHeight / vp.height) * 2;
+                const viewport = page.getViewport({ scale });
                 
-                const scaleX = container.clientWidth / viewportRaw.width;
-                const scaleY = container.clientHeight / viewportRaw.height;
-                const scale = Math.min(scaleX, scaleY) * 2; // Multiplicado por 2 para maior nitidez (Retina/HD)
-
-                const viewport = page.getViewport({ scale: scale });
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-
-                const renderTask = page.render(renderContext);
-                renderTask.promise.then(() => {
+                page.render({ canvasContext: ctx, viewport }).promise.then(() => {
                     pageRendering = false;
-                    if (renderedSlide && num !== renderedSlide && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                        const direction = num > renderedSlide ? 1 : -1;
-                        canvas.animate([
-                            { opacity: 0, transform: `translateX(${direction * 36}px) scale(0.985)` },
-                            { opacity: 1, transform: 'translateX(0) scale(1)' }
-                        ], {
-                            duration: 420,
-                            easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
-                        });
-                    }
-                    renderedSlide = num;
                     if (pageNumPending !== null) {
                         renderPage(pageNumPending);
                         pageNumPending = null;
@@ -141,68 +287,15 @@
             });
         }
 
-        function queueRenderPage(num) {
-            if (pageRendering) {
-                pageNumPending = num;
-            } else {
-                renderPage(num);
-            }
-        }
-
-        function nextSlide() { if (pdfDoc && currentSlide < totalSlides) { currentSlide++; queueRenderPage(currentSlide); } }
-        function prevSlide() { if (pdfDoc && currentSlide > 1) { currentSlide--; queueRenderPage(currentSlide); } }
-        function firstSlide() { if (pdfDoc) { currentSlide = 1; queueRenderPage(currentSlide); } }
-        function lastSlide() { if (pdfDoc) { currentSlide = totalSlides; queueRenderPage(currentSlide); } }
-
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-            }
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') { nextSlide(); }
-            if (e.key === 'ArrowLeft') { prevSlide(); }
-            if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); }
-        });
-
-        const slideArea = document.querySelector('main');
-        let touchStart = null;
-
-        slideArea.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1 || e.target.closest('button, a')) {
-                touchStart = null;
+        function nextSlide() { if (pdfDoc && currentSlide < totalSlides) { currentSlide++; if(!pageRendering) renderPage(currentSlide); } }
+        function prevSlide() { 
+            if (currentSlide <= 2) {
+                showPeriodicTable(); 
                 return;
             }
-
-            touchStart = {
-                x: e.touches[0].clientX,
-                y: e.touches[0].clientY
-            };
-        }, { passive: true });
-
-        slideArea.addEventListener('touchend', (e) => {
-            if (!touchStart || e.changedTouches.length !== 1) return;
-
-            const deltaX = e.changedTouches[0].clientX - touchStart.x;
-            const deltaY = e.changedTouches[0].clientY - touchStart.y;
-            touchStart = null;
-
-            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
-                deltaX < 0 ? nextSlide() : prevSlide();
-            }
-        }, { passive: true });
-
-        slideArea.addEventListener('touchcancel', () => {
-            touchStart = null;
-        }, { passive: true });
-
-        // Re-renderiza o slide ao redimensionar a janela para manter a proporção correta
-        window.addEventListener('resize', () => {
-            if (pdfDoc) queueRenderPage(currentSlide);
-        });
+            if (pdfDoc && currentSlide > 1) { currentSlide--; if(!pageRendering) renderPage(currentSlide); } 
+        }
+        function toggleFullscreen() { !document.fullscreenElement ? document.documentElement.requestFullscreen() : document.exitFullscreen?.(); }
     </script>
 </body>
 </html>
